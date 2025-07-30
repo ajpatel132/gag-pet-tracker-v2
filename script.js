@@ -1,74 +1,50 @@
-let items = [];
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-function renderItems() {
-  const list = document.getElementById('item-list');
-  list.innerHTML = '';
+// Your Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyAWnntTQF-QullnSup0upgqBZBD2L97MVI",
+  authDomain: "gag-pet-tracker-a5b6a.firebaseapp.com",
+  projectId: "gag-pet-tracker-a5b6a",
+  storageBucket: "gag-pet-tracker-a5b6a.appspot.com",
+  messagingSenderId: "82791063841",
+  appId: "1:82791063841:web:25464efef316c1211f1e60",
+  measurementId: "G-N9Z7D81Y0X",
+  databaseURL: "https://gag-pet-tracker-a5b6a-default-rtdb.firebaseio.com"
+};
 
-  items.forEach((item, index) => {
-    const div = document.createElement('div');
-    div.className = 'item';
+// Init Firebase
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
 
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = item.name + (item.checkedOut ? ` (Checked out by ${item.user})` : ' (Available)');
+// DOM elements
+const petForm = document.getElementById("petForm");
+const petList = document.getElementById("petList");
 
-    const btn = document.createElement('button');
-    btn.textContent = item.checkedOut ? 'Check In' : 'Check Out';
-    btn.onclick = () => handleItem(index);
+// Add a new pet to Firebase
+petForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("petName").value;
+  if (!name.trim()) return;
 
-    div.appendChild(nameSpan);
-    div.appendChild(btn);
+  const newPetRef = push(ref(database, "pets"));
+  await set(newPetRef, { name });
 
-    list.appendChild(div);
+  petForm.reset();
+});
+
+// Load pets and sync in real time
+function loadPets() {
+  const petsRef = ref(database, "pets");
+  onValue(petsRef, (snapshot) => {
+    petList.innerHTML = "";
+    const pets = snapshot.val();
+    for (const id in pets) {
+      const li = document.createElement("li");
+      li.textContent = pets[id].name;
+      petList.appendChild(li);
+    }
   });
 }
 
-function handleItem(index) {
-  const item = items[index];
-
-  if (item.checkedOut) {
-    const code = prompt('Enter the 6-digit check-in code:');
-    if (code === item.code) {
-      alert(`Item "${item.name}" checked in successfully!`);
-      item.checkedOut = false;
-      item.user = null;
-      item.code = null;
-    } else {
-      alert('Incorrect code. Item not checked in.');
-    }
-  } else {
-    const user = prompt('Enter your name to check out:');
-    if (!user) return;
-
-    const code = generateCode();
-    alert(`You have checked out "${item.name}". Your check-in code is: ${code}
-Please save this code!`);
-
-    item.checkedOut = true;
-    item.user = user;
-    item.code = code;
-  }
-
-  renderItems();
-}
-
-function generateCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit random code
-}
-
-function addItem() {
-  const input = document.getElementById('newItemName');
-  const name = input.value.trim();
-  if (name === '') return;
-
-  const password = prompt('Enter the add-item password:');
-  if (password !== 'ajpatel') {
-    alert('Incorrect password. Item not added.');
-    return;
-  }
-
-  items.push({ name: name, checkedOut: false, user: null, code: null });
-  input.value = '';
-  renderItems();
-}
-
-renderItems();
+loadPets();
